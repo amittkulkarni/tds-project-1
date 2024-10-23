@@ -1,22 +1,40 @@
 import requests
 import csv
 
-GITHUB_TOKEN = "extremely_top_secret_token"
+GITHUB_TOKEN = "top_secret_token_do_not_touch"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"}
 
 def get_users_in_basel():
     users = []
     query = "location:Basel+followers:>10"
-    url = f"https://api.github.com/search/users?q={query}&per_page=100"
-    response = requests.get(url, headers=HEADERS)
-    print("Users data is being fetched...")
-    data = response.json()
+    page = 1
+    per_page = 100
+    total_users = 0
 
-    for user in data['items']:
+    while True:
+        url = f"https://api.github.com/search/users?q={query}&per_page={per_page}&page={page}"
+        response = requests.get(url, headers=HEADERS)
+        print(f"Fetching page {page}...")
+
+        if response.status_code != 200:
+            print("Error fetching data:", response.json())
+            break
+
+        data = response.json()
+        users.extend(data['items'])
+        total_users += len(data['items'])
+
+        if len(data['items']) < per_page:
+            break
+
+        page += 1
+
+    detailed_users = []
+    for user in users:
         user_info = get_user_details(user['login'])
-        users.append(user_info)
+        detailed_users.append(user_info)
 
-    return users
+    return detailed_users
 
 def get_user_details(username):
     user_url = f"https://api.github.com/users/{username}"
@@ -64,7 +82,6 @@ def get_user_repos(username):
 
     return repos
 
-# Save users to CSV
 def save_users_to_csv(users):
     with open('users.csv', mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=['login', 'name', 'company', 'location', 'email', 'hireable', 'bio', 'public_repos', 'followers', 'following', 'created_at'])
@@ -88,3 +105,4 @@ if __name__ == "__main__":
 
     save_repos_to_csv(all_repos)
     print("Done")
+
